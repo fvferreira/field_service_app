@@ -34,11 +34,37 @@ class AuthProvider extends ChangeNotifier {
       _user = response.user;
       return true;
     } catch (error) {
-      _errorMessage = error.toString().replaceFirst('Exception:', '');
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> checkSession() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final token = await _tokenStorageService.getToken();
+      if (token == null) {
+        return;
+      }
+      _user = await _authService.getCurrentUser(token);
+    } catch (error) {
+      await _tokenStorageService.deleteToken();
+      _user = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> logout() async {
+    await _tokenStorageService.deleteToken();
+    _user = null;
+    _errorMessage = null;
+    notifyListeners();
   }
 }

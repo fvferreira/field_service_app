@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:field_service_app/models/auth_response.dart';
 import 'package:http/http.dart' as http;
 import 'package:field_service_app/core/api_constants.dart';
+import 'package:field_service_app/models/user.dart';
 
 class AuthService {
   Future<AuthResponse> login({
@@ -26,5 +27,26 @@ class AuthService {
     }
 
     throw Exception('Não foi possível realizar o login!');
+  }
+
+  Future<User> getCurrentUser(String token) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/auth/me');
+
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> json =
+          jsonDecode(response.body) as Map<String, dynamic>;
+      return User.fromJson(json);
+    }
+
+    if (response.statusCode == 401) {
+      throw Exception('Sessão inválida ou expirada');
+    }
+
+    throw Exception('Não foi possível validar a sessão');
   }
 }
