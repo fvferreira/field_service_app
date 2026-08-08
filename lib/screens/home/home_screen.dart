@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:field_service_app/providers/work_order_provider.dart';
 import 'package:field_service_app/screens/work_order/work_order_detail_screen.dart';
+import 'package:field_service_app/screens/inspection/inspection_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -98,6 +99,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 leading: const Icon(Icons.badge_outlined),
                 title: const Text('Função'),
                 subtitle: Text(_formatRole(user?.role)),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Histórico de inspeções'),
+                onTap: () {
+                  Navigator.pop(context);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const InspectionHistoryScreen(),
+                    ),
+                  );
+                },
               ),
               const Spacer(),
               ListTile(

@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:field_service_app/models/inspection.dart';
 import 'package:field_service_app/services/database_service.dart';
 import 'package:uuid/uuid.dart';
+import 'package:path_provider/path_provider.dart';
 
 class InspectionFormScreen extends StatefulWidget {
   final WorkOrder workOrder;
@@ -25,6 +26,15 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
   XFile? _selectedImage;
   final TextEditingController _observationController = TextEditingController();
   String? _selectedCondition;
+
+  Future<String> _saveImagePermanently(XFile image) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final fileName = '${_uuid.v4()}.jpg';
+    final savedImage = await File(
+      image.path,
+    ).copy('${directory.path}/$fileName');
+    return savedImage.path;
+  }
 
   Future<void> _getCurrentLocation() async {
     setState(() {
@@ -134,23 +144,24 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
       return;
     }
 
-    final inspection = Inspection(
-      clientId: _uuid.v4(),
-      workOrderId: widget.workOrder.id,
-      observation: _observationController.text.trim(),
-      condition: _selectedCondition,
-      photoPath: _selectedImage!.path,
-      latitude: _currentPosition!.latitude,
-      longitude: _currentPosition!.longitude,
-      capturedAt: DateTime.now(),
-      status: 'pending',
-    );
-
     setState(() {
       _isSaving = true;
     });
 
     try {
+      final photoPath = await _saveImagePermanently(_selectedImage!);
+
+      final inspection = Inspection(
+        clientId: _uuid.v4(),
+        workOrderId: widget.workOrder.id,
+        observation: _observationController.text.trim(),
+        condition: _selectedCondition,
+        photoPath: photoPath,
+        latitude: _currentPosition!.latitude,
+        longitude: _currentPosition!.longitude,
+        capturedAt: DateTime.now(),
+        status: 'pending',
+      );
       await _databaseService.insertInspection(inspection);
 
       if (!mounted) {
