@@ -3,6 +3,9 @@ import 'package:field_service_app/models/work_order.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
+import 'package:field_service_app/models/inspection.dart';
+import 'package:field_service_app/services/database_service.dart';
+import 'package:uuid/uuid.dart';
 
 class InspectionFormScreen extends StatefulWidget {
   final WorkOrder workOrder;
@@ -13,6 +16,9 @@ class InspectionFormScreen extends StatefulWidget {
 }
 
 class _InspectionFormScreenState extends State<InspectionFormScreen> {
+  bool _isSaving = false;
+  final DatabaseService _databaseService = DatabaseService();
+  final Uuid _uuid = const Uuid();
   Position? _currentPosition;
   bool _isGettingLocation = false;
   final ImagePicker _imagePicker = ImagePicker();
@@ -29,6 +35,9 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
+        if (mounted) {
+          _showMessage('Ative a localização do dispositivo');
+        }
         return;
       }
 
@@ -38,11 +47,22 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          _showMessage('Permissão de localização necessária');
+        }
         return;
       }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          _showMessage('Permissão de localização bloqueada nas configurações');
+        }
+        return;
+      }
+
       final position = await Geolocator.getCurrentPosition();
+
       if (!mounted) {
         return;
       }
@@ -50,6 +70,12 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
       setState(() {
         _currentPosition = position;
       });
+
+      _showMessage('Localização capturada');
+    } catch (error) {
+      if (mounted) {
+        _showMessage('Não foi possível obter a localização');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -77,45 +103,80 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
     super.dispose();
   }
 
-  void _validateInspection() {
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _validateInspection() async {
+    if (_isSaving) {
+      return;
+    }
+
     if (_observationController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Preencha a observação!')));
+      _showMessage('Preencha a observação!');
       return;
     }
 
     if (_selectedCondition == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Selecione a condição!')));
+      _showMessage('Selecione a condição!');
       return;
     }
 
     if (_selectedImage == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Adicione uma foto!')));
+      _showMessage('Adicione uma foto!');
       return;
     }
 
     if (_currentPosition == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Capture a localização!')));
+      _showMessage('Capture a localização!');
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            Text('Inspeção válida'),
-            Icon(Icons.verified_user_outlined, color: Colors.white, size: 16),
-          ],
-        ),
-      ),
+    final inspection = Inspection(
+      clientId: _uuid.v4(),
+      workOrderId: widget.workOrder.id,
+      observation: _observationController.text.trim(),
+      condition: _selectedCondition,
+      photoPath: _selectedImage!.path,
+      latitude: _currentPosition!.latitude,
+      longitude: _currentPosition!.longitude,
+      capturedAt: DateTime.now(),
+      status: 'pending',
     );
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await _databaseService.insertInspection(inspection);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('Inspeção salva no dispositivo');
+
+      await Future.delayed(const Duration(milliseconds: 700));
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('Não foi possível salvar a inspeção');
+
+      setState(() {
+        _isSaving = false;
+      });
+    }
   }
 
   @override
@@ -211,16 +272,17 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
                   fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _validateInspection,
-                  child: const Text('Concluir inspeção'),
-                ),
-              ),
             ],
+
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _validateInspection,
+                child: Text(_isSaving ? 'Salvando...' : 'Concluir inspeção'),
+              ),
+            ),
           ],
         ),
       ),
