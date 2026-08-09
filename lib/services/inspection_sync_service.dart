@@ -41,6 +41,6 @@ class InspectionSyncService {
       final data = jsonDecode(response.body);
       return data['id'] as String;
     }
-    throw Exception('Erro ao sincronizar inspeção');
+    throw Exception('Erro ${response.statusCode}: ${response.body}');
   }
 }

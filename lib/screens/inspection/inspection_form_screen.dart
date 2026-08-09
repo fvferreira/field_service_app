@@ -129,6 +129,11 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
       return;
     }
 
+    if (_observationController.text.trim().length < 10) {
+      _showMessage('A observação deve ter pelo menos 10 caracteres!');
+      return;
+    }
+
     if (_selectedCondition == null) {
       _showMessage('Selecione a condição!');
       return;

@@ -5,6 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:field_service_app/providers/work_order_provider.dart';
 import 'package:field_service_app/screens/work_order/work_order_detail_screen.dart';
 import 'package:field_service_app/screens/inspection/inspection_history_screen.dart';
+import 'package:field_service_app/services/connectivity_service.dart';
+import 'package:field_service_app/services/database_service.dart';
+import 'package:field_service_app/services/inspection_sync_service.dart';
+import 'package:field_service_app/services/sync_service.dart';
+import 'package:field_service_app/services/token_storage_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,6 +20,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ConnectivityService _connectivityService = ConnectivityService();
+
+  final SyncService _syncService = SyncService(
+    DatabaseService(),
+    InspectionSyncService(TokenStorageService(const FlutterSecureStorage())),
+  );
   String _formatRole(String? role) {
     if (role == 'field_technician') {
       return 'Técnico de campo';
@@ -29,9 +41,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _connectivityService.startListening(_syncService.syncPendingInspections);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<WorkOrderProvider>().loadWorkOrders();
     });
+  }
+
+  @override
+  void dispose() {
+    _connectivityService.dispose();
+    super.dispose();
   }
 
   @override

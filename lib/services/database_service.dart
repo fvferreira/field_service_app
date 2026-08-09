@@ -47,6 +47,19 @@ class DatabaseService {
     );
   }
 
+  Future<List<Inspection>> getPendingInspections() async {
+    final db = await database;
+
+    final result = await db.query(
+      'inspections',
+      where: 'status = ?',
+      whereArgs: ['pending'],
+      orderBy: 'capturedAt ASC',
+    );
+
+    return result.map((item) => Inspection.fromMap(item)).toList();
+  }
+
   Future<List<Inspection>> getInspections() async {
     final db = await database;
 

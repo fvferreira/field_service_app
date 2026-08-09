@@ -8,6 +8,15 @@ class SyncService {
 
   SyncService(this._databaseService, this._inspectionSyncService);
 
+  Future<void> syncPendingInspections() async {
+    final inspections = await _databaseService.getPendingInspections();
+    for (final inspection in inspections) {
+      try {
+        await syncInspection(inspection);
+      } catch (_) {}
+    }
+  }
+
   Future<void> syncInspection(Inspection inspection) async {
     try {
       final serverId = await _inspectionSyncService.syncInspection(inspection);

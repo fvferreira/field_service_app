@@ -62,11 +62,9 @@ class _InspectionHistoryScreenState extends State<InspectionHistoryScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Não foi possível sincronizar a inspeção'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao sincronizar: $error')));
     }
   }
 
