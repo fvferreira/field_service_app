@@ -10,7 +10,9 @@ import 'package:path_provider/path_provider.dart';
 
 class InspectionFormScreen extends StatefulWidget {
   final WorkOrder workOrder;
-  const InspectionFormScreen({super.key, required this.workOrder});
+  final Inspection? draft;
+
+  const InspectionFormScreen({super.key, required this.workOrder, this.draft});
 
   @override
   State<InspectionFormScreen> createState() => _InspectionFormScreenState();
@@ -26,6 +28,23 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
   XFile? _selectedImage;
   final TextEditingController _observationController = TextEditingController();
   String? _selectedCondition;
+  String? _draftClientId;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.draft;
+
+    if (draft != null) {
+      _draftClientId = draft.clientId;
+      _observationController.text = draft.observation;
+      _selectedCondition = draft.condition;
+
+      if (draft.photoPath != null) {
+        _selectedImage = XFile(draft.photoPath!);
+      }
+    }
+  }
 
   Future<String> _saveImagePermanently(XFile image) async {
     final directory = await getApplicationDocumentsDirectory();
@@ -119,6 +138,62 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _saveDraft() async {
+    if (_isSaving) {
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      String? photoPath;
+
+      if (_selectedImage != null) {
+        photoPath = await _saveImagePermanently(_selectedImage!);
+      }
+
+      final inspection = Inspection(
+        clientId: _draftClientId ?? _uuid.v4(),
+        workOrderId: widget.workOrder.id,
+        observation: _observationController.text.trim(),
+        condition: _selectedCondition,
+        photoPath: photoPath,
+        latitude: _currentPosition?.latitude,
+        longitude: _currentPosition?.longitude,
+        capturedAt: DateTime.now(),
+        status: 'draft',
+      );
+
+      await _databaseService.insertInspection(inspection);
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('Rascunho salvo no dispositivo');
+
+      await Future.delayed(const Duration(milliseconds: 700));
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('Não foi possível salvar o rascunho');
+
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
   Future<void> _validateInspection() async {
     if (_isSaving) {
       return;
@@ -157,7 +232,7 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
       final photoPath = await _saveImagePermanently(_selectedImage!);
 
       final inspection = Inspection(
-        clientId: _uuid.v4(),
+        clientId: _draftClientId ?? _uuid.v4(),
         workOrderId: widget.workOrder.id,
         observation: _observationController.text.trim(),
         condition: _selectedCondition,
@@ -291,6 +366,16 @@ class _InspectionFormScreenState extends State<InspectionFormScreen> {
             ],
 
             const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _isSaving ? null : _saveDraft,
+                child: const Text('Salvar rascunho'),
+              ),
+            ),
+
+            const SizedBox(height: 12),
 
             SizedBox(
               width: double.infinity,

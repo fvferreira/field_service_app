@@ -3,9 +3,9 @@ class Inspection {
   final String workOrderId;
   final String observation;
   final String? condition;
-  final String photoPath;
-  final double latitude;
-  final double longitude;
+  final String? photoPath;
+  final double? latitude;
+  final double? longitude;
   final DateTime capturedAt;
   final String status;
   final String? serverId;
@@ -16,9 +16,9 @@ class Inspection {
     required this.workOrderId,
     required this.observation,
     this.condition,
-    required this.photoPath,
-    required this.latitude,
-    required this.longitude,
+    this.photoPath,
+    this.latitude,
+    this.longitude,
     required this.capturedAt,
     required this.status,
     this.serverId,
@@ -47,9 +47,13 @@ class Inspection {
       workOrderId: map['workOrderId'] as String,
       observation: map['observation'] as String,
       condition: map['condition'] as String?,
-      photoPath: map['photoPath'] as String,
-      latitude: (map['latitude'] as num).toDouble(),
-      longitude: (map['longitude'] as num).toDouble(),
+      photoPath: map['photoPath'] as String?,
+      latitude: map['latitude'] != null
+          ? (map['latitude'] as num).toDouble()
+          : null,
+      longitude: map['longitude'] != null
+          ? (map['longitude'] as num).toDouble()
+          : null,
       capturedAt: DateTime.parse(map['capturedAt'] as String),
       status: map['status'] as String,
       serverId: map['serverId'] as String?,

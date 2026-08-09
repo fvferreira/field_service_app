@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:field_service_app/services/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:field_service_app/models/inspection.dart';
@@ -6,6 +8,10 @@ import 'package:field_service_app/services/inspection_sync_service.dart';
 import 'package:field_service_app/services/sync_service.dart';
 import 'package:field_service_app/services/token_storage_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:field_service_app/providers/work_order_provider.dart';
+import 'package:field_service_app/screens/inspection/inspection_form_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:field_service_app/models/work_order.dart';
 
 class InspectionHistoryScreen extends StatefulWidget {
   const InspectionHistoryScreen({super.key});
@@ -93,18 +99,47 @@ class _InspectionHistoryScreenState extends State<InspectionHistoryScreen> {
               itemCount: _inspections.length,
               itemBuilder: (context, index) {
                 final inspection = _inspections[index];
+                final workOrderProvider = context.read<WorkOrderProvider>();
+
+                WorkOrder? workOrder;
+
+                for (final order in workOrderProvider.workOrders) {
+                  if (order.id == inspection.workOrderId) {
+                    workOrder = order;
+                    break;
+                  }
+                }
 
                 return Card(
                   child: ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        File(inspection.photoPath),
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    onTap: inspection.status == 'draft' && workOrder != null
+                        ? () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => InspectionFormScreen(
+                                  workOrder: workOrder!,
+                                  draft: inspection,
+                                ),
+                              ),
+                            );
+                            await _loadInspections();
+                          }
+                        : null,
+                    leading: inspection.photoPath != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              File(inspection.photoPath!),
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.image_not_supported_outlined,
+                            size: 40,
+                          ),
                     title: Text(inspection.workOrderId),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,11 +153,13 @@ class _InspectionHistoryScreenState extends State<InspectionHistoryScreen> {
                     ),
                     trailing: inspection.status == 'synced'
                         ? const Icon(Icons.check_circle)
+                        : inspection.status == 'draft'
+                        ? const Icon(Icons.edit_outlined)
                         : IconButton(
-                            icon: const Icon(Icons.sync),
                             onPressed: () {
                               _syncInspection(inspection);
                             },
+                            icon: const Icon(Icons.sync),
                           ),
                   ),
                 );

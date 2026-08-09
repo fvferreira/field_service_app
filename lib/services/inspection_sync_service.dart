@@ -31,9 +31,11 @@ class InspectionSyncService {
       request.fields['condition'] = inspection.condition!;
     }
 
-    request.files.add(
-      await http.MultipartFile.fromPath('photo', inspection.photoPath),
-    );
+    if (inspection.photoPath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('photo', inspection.photoPath!),
+      );
+    }
     final streamResponse = await request.send();
     final response = await http.Response.fromStream(streamResponse);
 
