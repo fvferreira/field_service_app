@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:field_service_app/core/api_constants.dart';
 import 'package:field_service_app/models/user.dart';
 
+class UnauthorizedException implements Exception {}
+
 class AuthService {
   Future<AuthResponse> login({
     required String email,
@@ -40,11 +42,12 @@ class AuthService {
     if (response.statusCode == 200) {
       final Map<String, dynamic> json =
           jsonDecode(response.body) as Map<String, dynamic>;
+
       return User.fromJson(json);
     }
 
     if (response.statusCode == 401) {
-      throw Exception('Sessão inválida ou expirada');
+      throw UnauthorizedException();
     }
 
     throw Exception('Não foi possível validar a sessão');

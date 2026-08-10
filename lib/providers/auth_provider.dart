@@ -52,7 +52,7 @@ class AuthProvider extends ChangeNotifier {
         return;
       }
       _user = await _authService.getCurrentUser(token);
-    } catch (error) {
+    } on UnauthorizedException {
       await _tokenStorageService.deleteToken();
       _user = null;
     } finally {
